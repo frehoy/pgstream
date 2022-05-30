@@ -4,7 +4,7 @@ CREATE SCHEMA api;
 CREATE TABLE api.events (
     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    message TEXT
+    message JSONB
 );
 
 CREATE VIEW api.events_per_second AS
