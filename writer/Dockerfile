@@ -5,7 +5,7 @@ WORKDIR /writer
 COPY go.mod ./
 RUN go mod download
 
-COPY *.go ./
+COPY writer.go ./
 
 RUN go build -o /writer
 

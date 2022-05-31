@@ -3,7 +3,7 @@ up:
 down:
 	docker compose down --volumes
 build:
-	docker compose build
+	docker compose build writer
 re: build down up
 
 bench: up
