@@ -33,12 +33,11 @@ services:
       - "pgdata:/var/lib/postgresql/data"
       - "./schema/:/docker-entrypoint-initdb.d/"
       - "./postgresql.conf:/etc/postgresql/postgresql.conf"
-  bench:
-    # Put bench in its own profile to prevent it running on `docker compose up`
+  writer:
     profiles: ["bench"] 
-    image: alpine/bombardier
-    volumes:
-      - "./data.json:/data.json"
-    command: '--header="Content-Type: application/json" --header="Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYXBpX3VzZXIifQ.W9Fo49rxMbSVnhdK1lzjMwCgf_1MZCPy9GNbt9j10ds" --method=POST --body-file="/data.json"  http://rest:3000/events'
+    build:
+      context: ./writer/
+      dockerfile: Dockerfile
+
 volumes:
   pgdata:
