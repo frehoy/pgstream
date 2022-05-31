@@ -3,17 +3,19 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math/rand"
 	"net/http"
+	"net/url"
+	"os"
 	"time"
 )
 
 const charset = "abcdefghijklmnopqrstuvwxyz" +
 	"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
-const url = "http://127.0.0.1:3000/events"
 const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYXBpX3VzZXIifQ.W9Fo49rxMbSVnhdK1lzjMwCgf_1MZCPy9GNbt9j10ds"
 const parallelism = 16
 const duration = 60
@@ -33,9 +35,9 @@ func String(length int) string {
 	return StringWithCharset(length, charset)
 }
 
-func write_to_api(client *http.Client, url string, token string, data []byte) error {
+func write_to_api(client *http.Client, url *url.URL, token string, data []byte) error {
 
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(data))
+	req, err := http.NewRequest("POST", url.String(), bytes.NewBuffer(data))
 	if err != nil {
 		return err
 	}
@@ -54,6 +56,38 @@ func write_to_api(client *http.Client, url string, token string, data []byte) er
 	}
 
 	return nil
+}
+
+type appSettings struct {
+	url   *url.URL
+	token string
+}
+
+func get_url_from_env() (*url.URL, error) {
+	env_url, is_set := os.LookupEnv("WRITE_ENDPOINT")
+	if !is_set {
+		return nil, errors.New("WRITE_ENDPOINT env var not set.")
+	}
+
+	parsed_url, err := url.Parse(env_url)
+	if err != nil {
+		return nil, err
+	}
+
+	return parsed_url, nil
+}
+
+func get_settings() appSettings {
+
+	url_from_env, err := get_url_from_env()
+	if err != nil {
+		panic(err)
+	}
+
+	return appSettings{
+		url:   url_from_env,
+		token: token,
+	}
 }
 
 type message struct {
@@ -83,26 +117,23 @@ func make_payload() ([]byte, error) {
 	return payload, nil
 }
 
-func write_message_to_api(client *http.Client) error {
+func write_message_to_api(client *http.Client, settings appSettings) error {
 	data, err := make_payload()
 	if err != nil {
 		return err
 	}
 
-	err = write_to_api(client, url, token, data)
+	err = write_to_api(client, settings.url, token, data)
 	if err != nil {
 		return err
 	}
-	// } else {
-	// 	fmt.Println("Great success")
-	// }
 	return nil
 }
 
-func spamit() {
+func spamit(settings appSettings) {
 	client := &http.Client{}
 	for {
-		err := write_message_to_api(client)
+		err := write_message_to_api(client, settings)
 		if err != nil {
 			panic(err)
 		}
@@ -110,9 +141,9 @@ func spamit() {
 }
 
 func main() {
-
+	settings := get_settings()
 	for i := 0; i < parallelism; i++ {
-		go spamit()
+		go spamit(settings)
 	}
 	time.Sleep(time.Second * duration)
 }

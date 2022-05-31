@@ -38,6 +38,8 @@ services:
     build:
       context: ./writer/
       dockerfile: Dockerfile
+    environment:
+      WRITE_ENDPOINT: "http://rest:3000/events"
 
 volumes:
   pgdata:
