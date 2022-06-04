@@ -16,7 +16,6 @@ import (
 const charset = "abcdefghijklmnopqrstuvwxyz" +
 	"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
-const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYXBpX3VzZXIifQ.W9Fo49rxMbSVnhdK1lzjMwCgf_1MZCPy9GNbt9j10ds"
 const parallelism = 16
 const duration = 60
 
@@ -63,10 +62,18 @@ type appSettings struct {
 	token string
 }
 
-func get_url_from_env() (*url.URL, error) {
-	env_url, is_set := os.LookupEnv("WRITE_ENDPOINT")
+func getEnvVar(varname string) (value string, err error) {
+	value, is_set := os.LookupEnv(varname)
 	if !is_set {
-		return nil, errors.New("WRITE_ENDPOINT env var not set.")
+		return "", errors.New(fmt.Sprintf("%s env var not set.", varname))
+	}
+	return value, nil
+}
+
+func get_url_from_env() (*url.URL, error) {
+	env_url, err := getEnvVar("WRITE_ENDPOINT")
+	if err != nil {
+		return nil, err
 	}
 
 	parsed_url, err := url.Parse(env_url)
@@ -77,7 +84,11 @@ func get_url_from_env() (*url.URL, error) {
 	return parsed_url, nil
 }
 
-func get_settings() appSettings {
+func get_settings() (appSettings, error) {
+	token, err := getEnvVar("TOKEN")
+	if err != nil {
+		return appSettings{}, err
+	}
 
 	url_from_env, err := get_url_from_env()
 	if err != nil {
@@ -87,7 +98,7 @@ func get_settings() appSettings {
 	return appSettings{
 		url:   url_from_env,
 		token: token,
-	}
+	}, nil
 }
 
 type message struct {
@@ -123,7 +134,7 @@ func write_message_to_api(client *http.Client, settings appSettings) error {
 		return err
 	}
 
-	err = write_to_api(client, settings.url, token, data)
+	err = write_to_api(client, settings.url, settings.token, data)
 	if err != nil {
 		return err
 	}
@@ -141,7 +152,11 @@ func spamit(settings appSettings) {
 }
 
 func main() {
-	settings := get_settings()
+	settings, err := get_settings()
+	if err != nil {
+		panic(err)
+	}
+
 	for i := 0; i < parallelism; i++ {
 		go spamit(settings)
 	}
