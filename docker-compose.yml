@@ -41,6 +41,7 @@ services:
     environment:
       WRITE_ENDPOINT: "http://rest:3000/events"
       TOKEN: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYXBpX3VzZXIifQ.W9Fo49rxMbSVnhdK1lzjMwCgf_1MZCPy9GNbt9j10ds"
+      N_THREADS: 4
 
 volumes:
   pgdata:
