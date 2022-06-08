@@ -16,6 +16,9 @@ services:
       db:
         condition: service_healthy
   db:
+    build:
+      context: ./db/
+      dockerfile: Dockerfile
     command: postgres -c 'config_file=/etc/postgresql/postgresql.conf'
     image: postgres
     healthcheck:
@@ -31,8 +34,6 @@ services:
       POSTGRES_PASSWORD: password
     volumes:
       - "pgdata:/var/lib/postgresql/data"
-      - "./schema/:/docker-entrypoint-initdb.d/"
-      - "./postgresql.conf:/etc/postgresql/postgresql.conf"
   writer:
     profiles: ["bench"] 
     build:
