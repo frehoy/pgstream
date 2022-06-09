@@ -2,21 +2,21 @@ DROP SCHEMA IF EXISTS api CASCADE;
 CREATE SCHEMA api;
 
 CREATE TABLE api.events (
-    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    id BIGINT GENERATED ALWAYS AS IDENTITY,
+    ts TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     message JSONB
-);
+) PARTITION BY RANGE (ts);
 
 CREATE VIEW api.events_per_second AS
 SELECT
-    date_trunc('second', created_at) AS event_ts_second,
+    date_trunc('second', ts) AS event_ts_second,
     COUNT(*)
 FROM api.events
 GROUP BY 1
 ORDER BY 1 DESC
 LIMIT 20;
 
-CREATE INDEX events_created_at ON api.events USING BRIN (created_at);
+CREATE INDEX events_created_at ON api.events USING BRIN (ts);
 
 -- anon
 DROP ROLE IF EXISTS anon;

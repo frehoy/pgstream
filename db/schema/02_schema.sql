@@ -1,7 +1,7 @@
 CREATE VIEW api.searches AS
 SELECT
 	id,
-	created_at AS ts,
+	ts,
 	message->'search'->>'category' as category, 
 	message->'search'->>'query' as query
 FROM api.events 
@@ -15,5 +15,4 @@ SELECT
 	count(*) as seaches_count
 FROM api.searches
 GROUP BY 1, 2, 3
-ORDER BY 4 DESC
-LIMIT 50;
+ORDER BY 4 DESC;
