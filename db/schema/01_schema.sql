@@ -16,8 +16,6 @@ GROUP BY 1
 ORDER BY 1 DESC
 LIMIT 20;
 
-CREATE INDEX events_created_at ON api.events USING BRIN (ts);
-
 -- anon
 DROP ROLE IF EXISTS anon;
 CREATE ROLE anon nologin;
