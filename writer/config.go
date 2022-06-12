@@ -9,7 +9,7 @@ import (
 )
 
 const default_parallelism = 4
-const duration = 60
+const duration = 60 * 60
 
 func getEnvVar(varname string) (value string, err error) {
 	value, is_set := os.LookupEnv(varname)
