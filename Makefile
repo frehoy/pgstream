@@ -10,3 +10,6 @@ bench: up build
 	docker compose run --rm writer
 psql: up
 	docker compose exec db psql --user track
+
+test:
+	cd writer; go test
