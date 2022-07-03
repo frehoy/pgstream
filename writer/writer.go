@@ -16,9 +16,11 @@ type appSettings struct {
 	n_threads uint16
 }
 
-func write_to_api(client *http.Client, url *url.URL, token string, data []byte) error {
-
-	req, err := http.NewRequest("POST", url.String(), bytes.NewBuffer(data))
+func write_to_api(client *http.Client, url *url.URL, token string, payload []byte, path string) error {
+	// Copy the url before setting path so we don't get hairy with threads
+	this_url := *url
+	this_url.Path = path
+	req, err := http.NewRequest("POST", this_url.String(), bytes.NewBuffer(payload))
 	if err != nil {
 		return err
 	}
@@ -40,19 +42,19 @@ func write_to_api(client *http.Client, url *url.URL, token string, data []byte) 
 }
 
 func write_message_to_api(client *http.Client, settings appSettings) error {
-	data, err := make_payload()
+	payload, err := make_payload()
 	if err != nil {
 		return err
 	}
 
-	err = write_to_api(client, settings.url, settings.token, data)
+	err = write_to_api(client, settings.url, settings.token, payload, "/events")
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func spamit(settings appSettings, sent_messages chan int) {
+func spam_events(settings appSettings, sent_messages chan int) {
 	client := &http.Client{}
 	for {
 		err := write_message_to_api(client, settings)
@@ -63,30 +65,43 @@ func spamit(settings appSettings, sent_messages chan int) {
 	}
 }
 
-func show_requests_per_second(sent_messages chan int) {
+func spam_jobs(settings appSettings, submitted_jobs chan int) {
+	client := &http.Client{}
+	for {
+		err := submit_job(client, settings)
+		if err != nil {
+			panic(err)
+		}
+		submitted_jobs <- 1
+	}
+}
+
+func show_count_per_second(message string, count_channel chan int) {
 	var total int
 	tick := time.Tick(1 * time.Second)
 
 	for {
 		select {
 		case <-tick:
-			log.Println(fmt.Sprintf("Requests per second: %d", total))
+			log.Println(fmt.Sprintf("%s: %d", message, total))
 			total = 0
 		default:
-			total += <-sent_messages
+			total += <-count_channel
 		}
 	}
 }
 
 func main() {
-	settings, err := get_settings()
-	if err != nil {
-		panic(err)
-	}
+	settings := get_settings_or_fail()
 	sent_messages := make(chan int)
+	submitted_jobs := make(chan int)
 	for i := uint16(0); i < settings.n_threads; i++ {
-		go spamit(settings, sent_messages)
+		go spam_events(settings, sent_messages)
 	}
-	go show_requests_per_second(sent_messages)
+	for i := uint16(0); i < settings.n_threads; i++ {
+		go spam_jobs(settings, submitted_jobs)
+	}
+	go show_count_per_second("sent_messages", sent_messages)
+	go show_count_per_second("submitted_jobs", submitted_jobs)
 	time.Sleep(time.Second * duration)
 }

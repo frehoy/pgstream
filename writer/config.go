@@ -20,7 +20,7 @@ func getEnvVar(varname string) (value string, err error) {
 }
 
 func url_from_env() (*url.URL, error) {
-	env_url, err := getEnvVar("WRITE_ENDPOINT")
+	env_url, err := getEnvVar("API_ENDPOINT")
 	if err != nil {
 		return nil, err
 	}
@@ -72,4 +72,12 @@ func get_settings() (appSettings, error) {
 		token:     token,
 		n_threads: n_threads,
 	}, nil
+}
+
+func get_settings_or_fail() appSettings {
+	settings, err := get_settings()
+	if err != nil {
+		panic(err)
+	}
+	return settings
 }
