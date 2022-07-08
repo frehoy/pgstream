@@ -16,13 +16,13 @@ type appSettings struct {
 	n_threads uint16
 }
 
-func write_to_api(client *http.Client, url *url.URL, token string, payload []byte, path string) error {
+func call_api(client *http.Client, url *url.URL, token string, payload []byte, path string, method string) (response []byte, err error) {
 	// Copy the url before setting path so we don't get hairy with threads
 	this_url := *url
 	this_url.Path = path
 	req, err := http.NewRequest("POST", this_url.String(), bytes.NewBuffer(payload))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	req.Header.Add("Content-Type", "application/json")
@@ -30,15 +30,20 @@ func write_to_api(client *http.Client, url *url.URL, token string, payload []byt
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	_, err = io.ReadAll(resp.Body)
+	data, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	err = resp.Body.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	return data, nil
 }
 
 func write_message_to_api(client *http.Client, settings appSettings) error {
@@ -47,7 +52,7 @@ func write_message_to_api(client *http.Client, settings appSettings) error {
 		return err
 	}
 
-	err = write_to_api(client, settings.url, settings.token, payload, "/events")
+	_, err = call_api(client, settings.url, settings.token, payload, "/events", "POST")
 	if err != nil {
 		return err
 	}
@@ -91,17 +96,35 @@ func show_count_per_second(message string, count_channel chan int) {
 	}
 }
 
+func do_jobs(settings appSettings, done_jobs chan int) (err error) {
+	client := &http.Client{}
+	for {
+		err = do_work(client, settings)
+		if err != nil {
+			panic(err)
+		}
+		done_jobs <- 1
+	}
+}
+
 func main() {
 	settings := get_settings_or_fail()
 	sent_messages := make(chan int)
 	submitted_jobs := make(chan int)
-	for i := uint16(0); i < settings.n_threads; i++ {
+	finished_jobs := make(chan int)
+
+	for i := uint16(0); i < 1; i++ {
 		go spam_events(settings, sent_messages)
 	}
-	for i := uint16(0); i < settings.n_threads; i++ {
+	for i := uint16(0); i < 1; i++ {
 		go spam_jobs(settings, submitted_jobs)
 	}
+	for i := uint16(0); i < 16; i++ {
+		go do_jobs(settings, finished_jobs)
+	}
+
 	go show_count_per_second("sent_messages", sent_messages)
 	go show_count_per_second("submitted_jobs", submitted_jobs)
+	go show_count_per_second("finished_jobs", finished_jobs)
 	time.Sleep(time.Second * duration)
 }

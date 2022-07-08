@@ -23,19 +23,15 @@ CREATE TABLE queue.jobs(
   status queue.job_status DEFAULT 'waiting',
   work JSONB,
   worker_id integer
-)
-PARTITION BY LIST (status);
-CREATE TABLE queue.jobs_waiting 
-PARTITION OF queue.jobs FOR VALUES IN ('waiting');
-CREATE TABLE queue.jobs_in_progress 
-PARTITION OF queue.jobs FOR VALUES IN ('in_progress');
-CREATE TABLE queue.jobs_finished 
-PARTITION OF queue.jobs FOR VALUES IN ('finished');
-CREATE TABLE queue.jobs_failed 
-PARTITION OF queue.jobs FOR VALUES IN ('failed');
+);
+CREATE INDEX ON queue.jobs(status);
 
 CREATE VIEW api.jobs AS SELECT * FROM queue.jobs;
 GRANT ALL ON api.jobs TO api_user;
+
+CREATE VIEW api.jobs_by_status AS
+SELECT status, count(*) FROM queue.jobs 
+GROUP BY 1 ORDER BY 1;
 
 CREATE OR REPLACE FUNCTION notify_new_job()
   RETURNS trigger AS $$
