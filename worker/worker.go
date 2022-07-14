@@ -1,7 +1,8 @@
 package main
 
 import (
-	"fmt"
+	"math/rand"
+	"time"
 )
 
 type ImageResolution struct {
@@ -21,30 +22,56 @@ type DataJobPayload struct {
 }
 
 type Job interface {
-	DoJob() (bool, error)
+	DoJob() error
 }
 
 type Work interface {
-	DoWork() (bool, error)
+	DoWork() error
 }
 
 type JobPayload struct {
-	Id      int
-	Payload Work
+	Id         int
+	Payload    Work
+	Status     string
+	Try_number int
 }
 
-func (image_job_payload ImageJobPayload) DoWork() (done bool, err error) {
-	fmt.Printf("Doing  work on image image_job_payload %+v\n", image_job_payload)
-	return true, nil
+func (image_job_payload ImageJobPayload) DoWork() (err error) {
+	return nil
 }
 
-func (data_job_payload DataJobPayload) DoWork() (done bool, err error) {
-	fmt.Printf("Doing  work on data data_job_payload %+v\n", data_job_payload)
-	return true, nil
+func (data_job_payload DataJobPayload) DoWork() (err error) {
+	return nil
 }
 
-func (jp JobPayload) DoJob() (done bool, err error) {
-	fmt.Printf("Doing job on j %+v\n", jp)
-	jp.Payload.DoWork()
-	return true, nil
+// DoJob takes a pointer to JobPayload so it can mutate it, to set Status
+func (jp *JobPayload) DoJob() (err error) {
+	time.Sleep(time.Duration(rand.Intn(10)) * time.Millisecond)
+	err = jp.Payload.DoWork()
+	if err != nil {
+		jp.Status = "failed"
+	} else {
+		jp.Status = "finished"
+	}
+	return err
+}
+
+func RunJobsFromChannel(incoming_jobs <-chan JobPayload, processed_jobs chan<- JobPayload) {
+	for {
+		job, chan_open := <-incoming_jobs
+		if !chan_open {
+			break
+		}
+		err := job.DoJob()
+		if err != nil {
+
+		}
+		processed_jobs <- job
+	}
+}
+
+func DoJobsConcurrently(incoming_jobs <-chan JobPayload, processed_jobs chan<- JobPayload, concurrency int) {
+	for i := 0; i < concurrency; i++ {
+		go RunJobsFromChannel(incoming_jobs, processed_jobs)
+	}
 }

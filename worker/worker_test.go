@@ -10,9 +10,9 @@ func TestWorker(t *testing.T) {
 		Target_resolution: ImageResolution{x: 1024, y: 768},
 	}
 
-	data_job_payload := DataJobPayload {
-		From: "Start",
-		To: "End",
+	data_job_payload := DataJobPayload{
+		From:   "Start",
+		To:     "End",
 		Window: "Hourly",
 	}
 
@@ -26,22 +26,51 @@ func TestWorker(t *testing.T) {
 		Payload: data_job_payload,
 	}
 
-	var expected bool
-	var response bool
-	expected = true
-
-	response, _ = job_payload_with_image.Payload.DoWork()
-	if response != expected {
-		t.Fatalf("%v != %v", response, expected)
+	err := job_payload_with_image.Payload.DoWork()
+	if err != nil {
+		t.Fatalf("%v != %v", err, nil)
 	}
 
-	response, _ = job_payload_with_image.DoJob()
-	if response != expected {
-		t.Fatalf("%v != %v", response, expected)
+	err = job_payload_with_image.DoJob()
+	if err != nil {
+		t.Fatalf("%v != %v", err, nil)
 	}
 
-	response, _ = job_payload_with_data.DoJob()
-	if response != expected {
-		t.Fatalf("%v != %v", response, expected)
+	err = job_payload_with_data.DoJob()
+	if err != nil {
+		t.Fatalf("%v != %v", err, nil)
+	}
+}
+
+func submit_jobs(n_jobs int, incoming_jobs chan JobPayload) {
+	for i := 0; i < n_jobs; i++ {
+		incoming_jobs <- JobPayload{Id: i, Payload: DataJobPayload{}, Status: "in_progress"}
+	}
+}
+
+// DoJobs takes jobs through a channel, runs them concurrently and
+// puts them back on another channel
+func TestDoJobs(t *testing.T) {
+
+	n_jobs := 1000
+	concurrency := 2000
+	// Use tiny channels (size 1) to demonstrate we aren't deadlocking
+	incoming_jobs := make(chan JobPayload, 1)
+	processed_jobs := make(chan JobPayload, 1)
+	defer close(incoming_jobs)
+	defer close(processed_jobs)
+
+	go DoJobsConcurrently(incoming_jobs, processed_jobs, concurrency)
+	go submit_jobs(n_jobs, incoming_jobs)
+
+	var finished_jobs []JobPayload
+	for i := 0; i < n_jobs; i++ {
+		j := <-processed_jobs
+		finished_jobs = append(finished_jobs, j)
+	}
+	for _, j := range finished_jobs {
+		if j.Status != "finished" {
+			t.Fatalf("Job %v is not finished", j)
+		}
 	}
 }
